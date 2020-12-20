@@ -2,7 +2,8 @@
 
 5.12.2020 Update
 - Subject of project was choosen.  
-- This repository was created.  
+- This repository was created. 
+
 21.12.2020 Update
 - ESP Serial to MQTT relay was sucesfully created. 
 - Prototype of node-red dashboard was created.  
