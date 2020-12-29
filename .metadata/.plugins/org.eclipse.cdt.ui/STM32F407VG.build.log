@@ -1,0 +1,40 @@
+16:10:55 **** Incremental Build of configuration Debug for project STM32F407VG ****
+make -j4 all 
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DUSE_HAL_DRIVER -DDEBUG -DSTM32F407xx -c -I../USB_HOST/App -I../USB_HOST/Target -I../Core/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Middlewares/ST/STM32_USB_Host_Library/Core/Inc -I../Middlewares/ST/STM32_USB_Host_Library/Class/CDC/Inc -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+../Core/Src/main.c: In function 'main':
+../Core/Src/main.c:127:29: warning: passing argument 2 of 'HAL_ADC_Start_DMA' from incompatible pointer type [-Wincompatible-pointer-types]
+   HAL_ADC_Start_DMA(&hadc1, ADC_Data, 3);
+                             ^~~~~~~~
+In file included from ../Core/Inc/stm32f4xx_hal_conf.h:292:0,
+                 from ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:30,
+                 from ../Core/Inc/main.h:31,
+                 from ../Core/Src/main.c:21:
+../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_adc.h:592:19: note: expected 'uint32_t * {aka long unsigned int *}' but argument is of type 'uint16_t * {aka short unsigned int *}'
+ HAL_StatusTypeDef HAL_ADC_Start_DMA(ADC_HandleTypeDef* hadc, uint32_t* pData, uint32_t Length);
+                   ^~~~~~~~~~~~~~~~~
+../Core/Src/main.c:146:12: warning: implicit declaration of function 'sprintf' [-Wimplicit-function-declaration]
+     size = sprintf(data, "c%db%dll%ds%d\n\r",charging,battery,light_level,servo); // Stworzenie wiadomosci do wyslania
+            ^~~~~~~
+../Core/Src/main.c:146:12: warning: incompatible implicit declaration of built-in function 'sprintf'
+../Core/Src/main.c:146:12: note: include '<stdio.h>' or provide a declaration of 'sprintf'
+../Core/Src/main.c:146:20: warning: pointer targets in passing argument 1 of 'sprintf' differ in signedness [-Wpointer-sign]
+     size = sprintf(data, "c%db%dll%ds%d\n\r",charging,battery,light_level,servo); // Stworzenie wiadomosci do wyslania
+                    ^~~~
+../Core/Src/main.c:146:20: note: expected 'char *' but argument is of type 'uint8_t * {aka unsigned char *}'
+arm-none-eabi-gcc -o "STM32F407VG.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\ASUS\Desktop\SMp-projekt\iot-solar-driver\STM32F407VG\STM32F407VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32F407VG.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: STM32F407VG.elf
+ 
+arm-none-eabi-objdump -h -S  STM32F407VG.elf  > "STM32F407VG.list"
+arm-none-eabi-objcopy  -O binary  STM32F407VG.elf  "STM32F407VG.bin"
+arm-none-eabi-size   STM32F407VG.elf 
+   text	   data	    bss	    dec	    hex	filename
+  42600	    152	   3840	  46592	   b600	STM32F407VG.elf
+Finished building: default.size.stdout
+ 
+Finished building: STM32F407VG.bin
+ 
+Finished building: STM32F407VG.list
+ 
+
+16:10:56 Build Finished. 0 errors, 4 warnings. (took 1s.489ms)
+
