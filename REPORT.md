@@ -13,4 +13,9 @@
  on STM32:  
  - 3 ADC channels with use of DMA were added 
  - Prototype of UART communication with basic data frame containing ADC conversion parameters was created 
-
+  
+07.01.2021 Update  
+ on STM32:  
+ - UART receiveing function was added (servo data from ESP)
+ - prototype of PWM signal to control servo - with data received from ESP was added
+ - Added feedback UART transmittion to ensure that servo is in the right position
