@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,14 +50,26 @@ I2S_HandleTypeDef hi2s3;
 
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim10;
+DMA_HandleTypeDef hdma_tim4_ch2;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint8_t timer_state=0;
+uint8_t receive_state=0;
 uint16_t ADC_Data[3];
+uint8_t Duty=0;
 
+uint16_t scale=65535;
+static uint16_t battery=0;
+static uint16_t light_level=0;
+static uint16_t charging=0;
+static uint16_t servo=0;
+uint8_t Received_data[10];//data received from ESP
+uint8_t data[100];// data transmitted to ESP
+uint16_t size = 0; //size of transmitted data
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,13 +82,17 @@ static void MX_SPI1_Init(void);
 static void MX_TIM10_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM4_Init(void);
 void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	timer_state=1;// ustawione na razie co jedną sekundę
 }
-
+ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+ {
+	 receive_state = 1;
+ }
 
 /* USER CODE END PFP */
 
@@ -121,34 +137,58 @@ int main(void)
   MX_TIM10_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_Base_Start_IT(&htim10);
   HAL_ADC_Start_DMA(&hadc1, ADC_Data, 3);
+  HAL_TIM_PWM_Start_DMA(&htim4,TIM_CHANNEL_2, &Duty, 1);
 
+  //HAL_TIM_PWM_Start(&htim4, );
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if(timer_state==1)//gdy wystąpi przerwanie od timer10 wyslij po uarcie:
+	  if(timer_state==1)//if TIM10 interrupt, transmitt data via uart:
 	  	 {
-		  uint16_t battery=ADC_Data[0];//poziom napięcia na baterii
-		  uint16_t light_level=ADC_Data[1];//poziom swiatla zmierzony przez czujniki (fotorezystory)
-		  uint16_t charging=ADC_Data[2];//poziom napięcia dostarczanego przez panel
 
-		  uint16_t servo=0;//informacja zwrotna + sterowanie serwem do generacji pwm'a
+		  battery=ADC_Data[0];//battery voltage level
+		  light_level=ADC_Data[1];//light level given by photoresistor divider
+		  charging=ADC_Data[2];//solar panel voltage level
 
-		  uint8_t data[100];// Tablica przechowujaca wysylana wiadomosc.
-		  uint16_t size = 0; // Rozmiar wysylanej wiadomosci
-		  //przyklad ramki: c00000b00000ll00000s00000
+		  //servo = 0;
+		  //servo information is stored in static variable
+		  //we have to know the last position!!!
+
+		  //dataframe example: c00000b00000ll00000s00000
+
+		  HAL_GPIO_TogglePin(LED_Red_GPIO_Port, LED_Red_Pin);//RED led informs that data is transmitted!
 		  size = sprintf(data, "c%db%dll%ds%d\n\r",charging,battery,light_level,servo); // Stworzenie wiadomosci do wyslania
-		  HAL_UART_Transmit_IT(&huart2, data, size); // Rozpoczecie nadawania danych z wykorzystaniem przerwan
-		  HAL_GPIO_TogglePin(LED_Red_GPIO_Port, LED_Red_Pin); // Zmiana stanu pinu na diodzie LED
-
+		  HAL_UART_Transmit_IT(&huart2, data, size);//data transmittion
 		  timer_state=0;
 	  	 }
+
+
+		  if(receive_state==1)//if UART Rx Callback set servo and transmitt feedback message
+		  {
+			//if data received - turn on LED_Green for one sec
+			HAL_GPIO_WritePin(LED_Green_GPIO_Port, LED_Green_Pin, GPIO_PIN_SET);
+			HAL_Delay(1000);
+			HAL_GPIO_WritePin(LED_Green_GPIO_Port, LED_Green_Pin, GPIO_PIN_RESET);
+			//receiving data:
+			HAL_UART_Receive_IT(&huart2,Received_data,10);
+
+			servo=atoi(&Received_data);//if servo data was received, example s1234
+			Duty = 100*servo/scale;
+			size = sprintf(data, "c%db%dll%ds%d\n\r",charging,battery,light_level,servo); //feedback message  with extra servo data (updated)
+			HAL_UART_Transmit_IT(&huart2, data, size);
+			receive_state=0;
+		  }
+
+
+
 
 
     /* USER CODE END WHILE */
@@ -381,6 +421,65 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 16799;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 99;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
+
+}
+
+/**
   * @brief TIM10 Initialization Function
   * @param None
   * @retval None
@@ -398,9 +497,9 @@ static void MX_TIM10_Init(void)
   htim10.Instance = TIM10;
   htim10.Init.Prescaler = 9999;
   htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim10.Init.Period = 16799;
-  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim10.Init.Period = 33599;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
   {
     Error_Handler();
@@ -452,8 +551,12 @@ static void MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
@@ -484,7 +587,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LED_Red_Pin|Audio_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LED_Green_Pin|LED_Red_Pin|Audio_RST_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : CS_I2C_SPI_Pin */
   GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
@@ -528,8 +631,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(CLK_IN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LED_Red_Pin Audio_RST_Pin */
-  GPIO_InitStruct.Pin = LED_Red_Pin|Audio_RST_Pin;
+  /*Configure GPIO pins : LED_Green_Pin LED_Red_Pin Audio_RST_Pin */
+  GPIO_InitStruct.Pin = LED_Green_Pin|LED_Red_Pin|Audio_RST_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
