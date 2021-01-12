@@ -62,14 +62,15 @@ uint8_t receive_state=0;
 uint16_t ADC_Data[3];
 uint8_t Duty=0;
 
-uint16_t scale=65535;
+uint16_t scale=1024;
 static uint16_t battery=0;
-static uint16_t light_level=0;
+static uint16_t balance_level=0;
 static uint16_t charging=0;
 static uint16_t servo=0;
 uint8_t Received_data[10];//data received from ESP
 uint8_t data[100];// data transmitted to ESP
 uint16_t size = 0; //size of transmitted data
+uint8_t mode =0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -144,7 +145,11 @@ int main(void)
   HAL_ADC_Start_DMA(&hadc1, ADC_Data, 3);
   HAL_TIM_PWM_Start_DMA(&htim4,TIM_CHANNEL_2, &Duty, 1);
 
-  //HAL_TIM_PWM_Start(&htim4, );
+  Duty=8;
+
+ RCC->APB2LPENR|= ~(1<<RCC_APB2LPENR_TIM10LPEN_Pos);
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -155,7 +160,7 @@ int main(void)
 	  	 {
 
 		  battery=ADC_Data[0];//battery voltage level
-		  light_level=ADC_Data[1];//light level given by photoresistor divider
+		  balance_level=ADC_Data[1];//light level given by photoresistor divider
 		  charging=ADC_Data[2];//solar panel voltage level
 
 		  //servo = 0;
@@ -165,28 +170,60 @@ int main(void)
 		  //dataframe example: c00000b00000ll00000s00000
 
 		  HAL_GPIO_TogglePin(LED_Red_GPIO_Port, LED_Red_Pin);//RED led informs that data is transmitted!
-		  size = sprintf(data, "c%db%dll%ds%d\n\r",charging,battery,light_level,servo); // Stworzenie wiadomosci do wyslania
+		  size = sprintf(data, "c%db%dll%ds%d\n\r",charging,battery,balance_level,servo); // Stworzenie wiadomosci do wyslania
 		  HAL_UART_Transmit_IT(&huart2, data, size);//data transmittion
 		  timer_state=0;
+
 	  	 }
 
 
 		  if(receive_state==1)//if UART Rx Callback set servo and transmitt feedback message
 		  {
-			//if data received - turn on LED_Green for one sec
+
+			//if data received - turn on LED_Green for half of sec
 			HAL_GPIO_WritePin(LED_Green_GPIO_Port, LED_Green_Pin, GPIO_PIN_SET);
-			HAL_Delay(1000);
+			HAL_Delay(500);
 			HAL_GPIO_WritePin(LED_Green_GPIO_Port, LED_Green_Pin, GPIO_PIN_RESET);
 			//receiving data:
 			HAL_UART_Receive_IT(&huart2,Received_data,10);
 
-			servo=atoi(&Received_data);//if servo data was received, example s1234
-			Duty = 100*servo/scale;
-			size = sprintf(data, "c%db%dll%ds%d\n\r",charging,battery,light_level,servo); //feedback message  with extra servo data (updated)
+			servo=atoi(&Received_data);//if servo data was received, example s4
+
+			if(servo == 1)
+			{
+			//sleep mode configuration:
+			SCB->SCR |= ~(1<<SCB_SCR_SLEEPDEEP_Pos);
+
+			}
+			else if(servo>3 && servo<12) //example when 4 set servo
+			{
+			mode = 1;
+			Duty = servo;
+			}
+			else mode=0;// example: when 0 automat
+
+			//feedback message:
+			size = sprintf(data, "c%db%dll%ds%d\n\r",charging,battery,balance_level,servo); //feedback message  with extra servo data (updated)
 			HAL_UART_Transmit_IT(&huart2, data, size);
 			receive_state=0;
 		  }
+		  if(receive_state==0 && mode==0 && timer_state==1)
+		  {
+			  const uint16_t neutral_pos= 450;
 
+			  if(abs(ADC_Data[1]-neutral_pos)>50)
+			  {
+			  	  if(ADC_Data[1]-neutral_pos>0)
+					{
+
+
+					  if(Duty<11) Duty+=1;
+					}
+				  else
+					 if(Duty>4) Duty-=1;
+			  }
+
+		  }
 
 
 
@@ -271,7 +308,7 @@ static void MX_ADC1_Init(void)
   */
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.Resolution = ADC_RESOLUTION_10B;
   hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
@@ -296,6 +333,7 @@ static void MX_ADC1_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
+  sConfig.Channel = ADC_CHANNEL_8;
   sConfig.Rank = 2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
@@ -303,6 +341,7 @@ static void MX_ADC1_Init(void)
   }
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
+  sConfig.Channel = ADC_CHANNEL_9;
   sConfig.Rank = 3;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
@@ -495,7 +534,7 @@ static void MX_TIM10_Init(void)
 
   /* USER CODE END TIM10_Init 1 */
   htim10.Instance = TIM10;
-  htim10.Init.Prescaler = 9999;
+  htim10.Init.Prescaler = 499;
   htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim10.Init.Period = 33599;
   htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
