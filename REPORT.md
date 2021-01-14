@@ -19,3 +19,10 @@
  - UART receiveing function was added (servo data from ESP)
  - prototype of PWM signal to control servo - with data received from ESP was added
  - Added feedback UART transmittion to ensure that servo is in the right position
+  
+12.01.2021 Update  
+ on STM32:
+ - Added light leading algorithm, with PWM generation to set the servo properly  
+ - prototype of sleep mode function was added  
+ - correction of UART Receiving function to set the right servo position based on received data   
+ 
