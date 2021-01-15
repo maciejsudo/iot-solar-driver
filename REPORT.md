@@ -26,3 +26,7 @@
  - prototype of sleep mode function was added  
  - correction of UART Receiving function to set the right servo position based on received data   
  
+15.01.2021 Update  
+ - STM32F407VG code has been ported to the STM32F429ZIT so we can now work more time independly on the STM hardware side.  
+ - Also during code port, serial data recieving ability was repaired so at this moment it works only on STM32F429ZIT.
+ - Node Red prototype is no longer prototype, new funcions are added and most of the repairs and calibrations are done at this moment.  
