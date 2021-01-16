@@ -147,31 +147,13 @@ int main(void)
 
   Duty=8;
 
- //RCC->APB2LPENR|= ~(1<<RCC_APB2LPENR_TIM10LPEN_Pos);
-
-
+ RCC->APB2LPENR|= ~(1<<RCC_APB2LPENR_TIM10LPEN_Pos);
 
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-  //watchdog configuration:
-
-  RCC->CSR |= RCC_CSR_LSION; //enable LSI required for watchdog
-  while((RCC->CSR & RCC_CSR_LSIRDY) == 0)//checking whether LSI is on
-  { ; }
-
-  IWDG->KR = 0x5555;// enabling access to the IWDG_PR and IWDG_RLR registers
-  IWDG->PR =4;//set prescaler
-  IWDG->RLR = 0x7D0;//counter value
-  IWDG->KR =0xaaaa;//counter reset
-
-  IWDG->KR = 0xcccc;//turn Watchdog on
-  __DSB();//waiting for completed memory acces
-
-
   while (1)
   {
 	  if(timer_state==1)//if TIM10 interrupt, transmitt data via uart:
@@ -210,7 +192,7 @@ int main(void)
 			if(servo == 1)
 			{
 			//sleep mode configuration:
-			//SCB->SCR |= ~(1<<SCB_SCR_SLEEPDEEP_Pos);
+			SCB->SCR |= ~(1<<SCB_SCR_SLEEPDEEP_Pos);
 
 			}
 			else if(servo>3 && servo<12) //example when 4 set servo
@@ -242,11 +224,8 @@ int main(void)
 			  }
 
 		  }
-		  //IWDG->KR = 0xaaaa;
-		  HAL_GPIO_WritePin(LED_Blue_GPIO_Port, LED_Blue_Pin, GPIO_PIN_SET);
-		  HAL_Delay(30);
-		  HAL_GPIO_WritePin(LED_Blue_GPIO_Port, LED_Blue_Pin, GPIO_PIN_RESET);
-		  HAL_Delay(30);
+
+
 
 
     /* USER CODE END WHILE */
@@ -647,7 +626,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LED_Green_Pin|LED_Red_Pin|LED_Blue_Pin|Audio_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, LED_Green_Pin|LED_Red_Pin|Audio_RST_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : CS_I2C_SPI_Pin */
   GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
@@ -691,8 +670,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(CLK_IN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LED_Green_Pin LED_Red_Pin LED_Blue_Pin Audio_RST_Pin */
-  GPIO_InitStruct.Pin = LED_Green_Pin|LED_Red_Pin|LED_Blue_Pin|Audio_RST_Pin;
+  /*Configure GPIO pins : LED_Green_Pin LED_Red_Pin Audio_RST_Pin */
+  GPIO_InitStruct.Pin = LED_Green_Pin|LED_Red_Pin|Audio_RST_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

@@ -161,16 +161,16 @@ int main(void)
 
   RCC->CSR |= RCC_CSR_LSION; //enable LSI required for watchdog
   while((RCC->CSR & RCC_CSR_LSIRDY) == 0)//checking whether LSI is on
-  { ; }
+  {}
 
   IWDG->KR = 0x5555;// enabling access to the IWDG_PR and IWDG_RLR registers
   IWDG->PR =4;//set prescaler
-  IWDG->RLR = 0x7D0;//counter value
+  IWDG->RLR = 0xFFF;//counter value
   IWDG->KR =0xaaaa;//counter reset
 
   IWDG->KR = 0xcccc;//turn Watchdog on
   __DSB();//waiting for completed memory acces
-
+  //EXTI->IMR = EXTI_IMR_MR0;//
 
   while (1)
   {

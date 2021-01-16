@@ -165,7 +165,7 @@ int main(void)
 
   IWDG->KR = 0x5555;// enabling access to the IWDG_PR and IWDG_RLR registers
   IWDG->PR =4;//set prescaler
-  IWDG->RLR = 0x7D0;//counter value
+  IWDG->RLR = 0x7D0; //0xFFF;//counter value
   IWDG->KR =0xaaaa;//counter reset
 
   IWDG->KR = 0xcccc;//turn Watchdog on

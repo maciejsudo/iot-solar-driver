@@ -157,20 +157,16 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  //watchdog configuration:
-
-  RCC->CSR |= RCC_CSR_LSION; //enable LSI required for watchdog
-  while((RCC->CSR & RCC_CSR_LSIRDY) == 0)//checking whether LSI is on
-  { ; }
-
-  IWDG->KR = 0x5555;// enabling access to the IWDG_PR and IWDG_RLR registers
+  RCC->CSR |= RCC_CSR_LSION;
+  while((RCC->CSR & RCC_CSR_LSIRDY) == 0) { ; }
+  IWDG->KR = 0x5555;
   IWDG->PR =4;//set prescaler
-  IWDG->RLR = 0x7D0;//counter value
-  IWDG->KR =0xaaaa;//counter reset
+  IWDG->RLR = 0xFFF;
+  IWDG->KR =0xaaaa;
 
-  IWDG->KR = 0xcccc;//turn Watchdog on
-  __DSB();//waiting for completed memory acces
-
+  IWDG->KR = 0xcccc;
+  __DSB();
+  EXTI->IMR = EXTI_IMR_MR0;
 
   while (1)
   {
@@ -242,7 +238,7 @@ int main(void)
 			  }
 
 		  }
-		  //IWDG->KR = 0xaaaa;
+		  IWDG->KR = 0xaaaa;
 		  HAL_GPIO_WritePin(LED_Blue_GPIO_Port, LED_Blue_Pin, GPIO_PIN_SET);
 		  HAL_Delay(30);
 		  HAL_GPIO_WritePin(LED_Blue_GPIO_Port, LED_Blue_Pin, GPIO_PIN_RESET);

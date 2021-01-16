@@ -92,6 +92,8 @@ void Error_Handler(void);
 #define LED_Green_GPIO_Port GPIOD
 #define LED_Red_Pin GPIO_PIN_14
 #define LED_Red_GPIO_Port GPIOD
+#define LED_Blue_Pin GPIO_PIN_15
+#define LED_Blue_GPIO_Port GPIOD
 #define I2S3_MCK_Pin GPIO_PIN_7
 #define I2S3_MCK_GPIO_Port GPIOC
 #define VBUS_FS_Pin GPIO_PIN_9
