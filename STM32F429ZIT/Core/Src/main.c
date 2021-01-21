@@ -53,7 +53,7 @@ UART_HandleTypeDef huart2;
 volatile uint8_t timer_state = 0;
 volatile uint8_t receive_state = 0;
 uint16_t adc_data[3];
-uint8_t duty=0;
+uint8_t Duty=0;
 
 static uint16_t battery=0;
 static uint16_t balance_level=0;
@@ -126,9 +126,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim10);
   HAL_ADC_Start_DMA(&hadc1, adc_data, 3);
-  HAL_TIM_PWM_Start_DMA(&htim4,TIM_CHANNEL_2, &duty, 1);
+  HAL_TIM_PWM_Start_DMA(&htim4,TIM_CHANNEL_2, &Duty, 1);
 
-    duty=8;
+    Duty=8;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -151,7 +151,7 @@ int main(void)
 		  //dataframe example: c00000b00000ll00000s00000
 
 		  HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_14);//RED led informs that data is transmitted!
-		  size = sprintf(data_to_transmit, "c%db%dll%ds%d\n\r",charging,battery,balance_level,servo); // Stworzenie wiadomosci do wyslania
+		  size = sprintf(data_to_transmit, "p%db%dl%ds%d\n",charging,battery,balance_level,servo); // Stworzenie wiadomosci do wyslania
 		  HAL_UART_Transmit_IT(&huart2, data_to_transmit, size);//data transmittion
 		  timer_state=0;
 	  	 }
@@ -176,12 +176,12 @@ int main(void)
 		else if(servo>3 && servo<12) //example when 4 set servo
 		{
 		mode = 1;
-		duty = servo;
+		Duty = servo;
 		}
 		else mode=0;// example: when 0 automatic servo positioning
 
 		//feedback message:
-		size = sprintf(data_to_transmit, "c%db%dll%ds%d\n\r",charging,battery,balance_level,servo); //feedback message  with extra servo data (updated)
+		size = sprintf(data_to_transmit, "p%db%dl%ds%d\n",charging,battery,balance_level,servo); //feedback message  with extra servo data (updated)
 		HAL_UART_Transmit_IT(&huart2, data_to_transmit, size);
 		receive_state=0;
 	  }
@@ -194,10 +194,10 @@ int main(void)
 		  {
 		  	  if(adc_data[1]-neutral_pos>0)
 				{
-				  if(duty<11) duty+=1;
+				  if(Duty<11) Duty+=1;
 				}
 			  else{
-				  if(duty>4) duty-=1;
+				  if(Duty>4) Duty-=1;
 			  }
 		  }
 
