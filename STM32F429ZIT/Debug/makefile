@@ -54,8 +54,8 @@ all: main-build
 main-build: STM32F429ZIT.elf secondary-outputs
 
 # Tool invocations
-STM32F429ZIT.elf: $(OBJS) $(USER_OBJS) C:\Users\Jacek\Workspace\Przed_rej\STM32F429workspace\STM32F429ZIT\STM32F429ZITX_FLASH.ld
-	arm-none-eabi-gcc -o "STM32F429ZIT.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Jacek\Workspace\Przed_rej\STM32F429workspace\STM32F429ZIT\STM32F429ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32F429ZIT.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+STM32F429ZIT.elf: $(OBJS) $(USER_OBJS) C:\Users\Jacek\Workspace\TEMP_WORKSPACE\Przed_rej_F429\STM32F429workspace\STM32F429ZIT\STM32F429ZITX_FLASH.ld
+	arm-none-eabi-gcc -o "STM32F429ZIT.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\Jacek\Workspace\TEMP_WORKSPACE\Przed_rej_F429\STM32F429workspace\STM32F429ZIT\STM32F429ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32F429ZIT.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
