@@ -4,17 +4,17 @@
 
 
 //Configuration 
-const char* ssid = "WiFi-SSID";
-const char* password =  "WiFi-PASS";
+const char* ssid = "WIFI-SSID";
+const char* password =  "WIFI-PASS";
 
-const char* mqttServer = "MQTT-Local-Broker-IP";
+const char* mqttServer = "BROKER-IP";
 const int mqttPort = 1883;
 const char* clientId = "ESP8266-ID";
 const char* mqttUser = "-";
 const char* mqttPassword = "-";
 
-const char* dataOutTopic = "/solar/data";
-const char* dataInTopic = "/solar/control";
+const char* dataOutTopic = "/solar/data_to_node_red";
+const char* dataInTopic = "/solar/data_from_node_red";
 
 boolean newData = false;
 const byte dataLength = 22;
@@ -25,8 +25,7 @@ PubSubClient client(EspWiFiClient);
 void callback(char* topic, byte* payload, unsigned int length) {
   for (unsigned int i = 0; i < length; i++) {
     Serial.print((char)payload[i]);
-  }
-  Serial.println(); 
+  } 
 }
 
 void receiveData() {
