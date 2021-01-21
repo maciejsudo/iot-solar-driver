@@ -133,12 +133,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
- uint8_t tmp = 0;
- //HAL_UART_Receive_IT(&huart2, tmp, 1);
+ uint8_t tmp = 0; //HOT-FIX
 
   while (1)
   {
-	  HAL_UART_Receive_IT(&huart2, &tmp, 1);
+	  HAL_UART_Receive_IT(&huart2, &tmp, 1); //HOT-FIX
 
 	  if(timer_state == 1)//if TIM10 interrupt, transmitt data via uart:
 	  	 {
@@ -148,7 +147,7 @@ int main(void)
 		  charging = adc_data[2];//solar panel voltage level
 
 
-		  //dataframe example: c00000b00000ll00000s00000
+
 
 		  HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_14);//RED led informs that data is transmitted!
 		  size = sprintf(data_to_transmit, "p%db%dl%ds%d\n",charging,battery,balance_level,servo); // Stworzenie wiadomosci do wyslania
@@ -168,15 +167,10 @@ int main(void)
 
 		servo=atoi(&received_data);//store recieved servo data was received, example: 4
 
-		if(servo == 1)
-		{
-		//sleep mode configuration HERE
-
-		}
-		else if(servo>3 && servo<12) //example when 4 set servo
+		if(servo>=1 && servo<=8)
 		{
 		mode = 1;
-		Duty = servo;
+		Duty = (servo + 3);
 		}
 		else mode=0;// example: when 0 automatic servo positioning
 
