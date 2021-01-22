@@ -22,7 +22,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdbool.h>
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -32,6 +33,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define AUTOMATIC 0
+#define MANUAL 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,20 +53,27 @@ DMA_HandleTypeDef hdma_tim4_ch2;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-volatile uint8_t timer_state = 0;
-volatile uint8_t receive_state = 0;
-uint16_t adc_data[3];
-uint8_t Duty=0;
+//Callbacks flags
+volatile bool data_ready_to_send = false;
+volatile bool is_data_received = false;
 
+
+
+//ADC data
+uint16_t adc_data[3];
 static uint16_t battery=0;
 static uint16_t balance_level=0;
 static uint16_t charging=0;
-static uint16_t servo=0;
 
-volatile uint8_t received_data = 0;//data received from ESP
-uint8_t data_to_transmit[100];// data transmitted to ESP
+//servo position
+uint8_t mode =  AUTOMATIC; //servo mode
+static uint16_t servo=0;  //servo position
+uint8_t Duty=0; //PWM duty - servo position
+
+//USART data
+volatile uint8_t received_data = 0; //data received from ESP
+uint8_t data_to_transmit[100]; //data transmitted to ESP
 uint16_t size = 0; //size of transmitted data
-uint8_t mode = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -76,13 +86,98 @@ static void MX_TIM10_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	timer_state = 1; //Timer10 interrupt flag
+	data_ready_to_send = true; //TIM10 interrupt flag
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	 receive_state = 1;
-	 received_data  = (uint16_t)(huart->Instance->DR & (uint16_t)0x01FF);
+	is_data_received = true;
+	received_data  = (uint16_t)(huart->Instance->DR & (uint16_t)0x01FF);
 }
+//-----------------------------------------------------------------------
+void watchdog_init(void){
+	RCC->CSR |= RCC_CSR_LSION; //enable LSI required for watchdog
+	while((RCC->CSR & RCC_CSR_LSIRDY) == 0)//checking whether LSI is on
+	{ ; }
+
+	IWDG->KR = 0x5555;// enabling access to the IWDG_PR and IWDG_RLR registers
+	IWDG->PR = 4;//set prescaler
+	IWDG->RLR = 0x7d0;//counter value
+	IWDG->KR = 0xaaaa;//counter reset
+	IWDG->KR = 0xcccc;//turn watchdog on
+	__DSB();//waiting for completed memory access
+}
+void watchdog_clear(void){
+	  IWDG->KR = 0xaaaa;//counter reset
+}
+void transmit_data(void){
+	if(data_ready_to_send == true)//if TIM10 interrupt, transmit data via USART
+	{
+
+		battery = adc_data[0];
+		balance_level = adc_data[1];
+		charging = adc_data[2];
+
+		HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_14);//RED led informs that data is transmitted
+
+		size = sprintf(data_to_transmit, "p%db%dl%ds%d\n", charging, battery, balance_level, servo);
+		HAL_UART_Transmit_IT(&huart2, data_to_transmit, size);
+		data_ready_to_send = false;
+	}
+}
+void process_received_data(void){
+	if(is_data_received == true){//if UART data availbe - set servo according to it and transmit feedback message
+
+		//if data received - turn on LED_Green for half of second
+		HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_SET);
+		HAL_Delay(500);
+		HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET);
+
+		servo=atoi(&received_data);
+
+		size = sprintf(data_to_transmit, "p%db%dl%ds%d\n", charging,battery, balance_level, servo); //feedback with updated data
+		HAL_UART_Transmit_IT(&huart2, data_to_transmit, size);
+		is_data_received = false;
+	}
+}
+void determine_mode(void){
+	if(servo>=1 && servo<=8)
+	{
+		mode = MANUAL;
+	}
+	else{
+		mode = AUTOMATIC;
+	}
+}
+void automatic_servo_positioning(void){
+	const uint16_t neutral_pos = 512;
+
+	if(abs(adc_data[1] - neutral_pos) > 25 && data_ready_to_send == true)
+	{
+		if(adc_data[1] - neutral_pos > 0)
+		{
+			if(Duty < 11) Duty += 1;
+		}
+		else{
+			if(Duty > 4) Duty -= 1;
+		}
+	}
+}
+void process_servo(void){
+
+	process_received_data();
+	determine_mode();
+
+	switch(mode){
+	case MANUAL:
+		Duty = (servo + 3);
+		break;
+	case AUTOMATIC:
+		automatic_servo_positioning();
+		break;
+	}
+}
+
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -127,76 +222,30 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim10);
   HAL_ADC_Start_DMA(&hadc1, adc_data, 3);
   HAL_TIM_PWM_Start_DMA(&htim4,TIM_CHANNEL_2, &Duty, 1);
-
-    Duty=8;
+  watchdog_init();
+  Duty=8;
+  /*
+   HOT-FIX explanation
+   HAL_UART_RxCpltCallback function is being executed if UART data frame is received, but does not
+   store that frame, so "received_data  = (uint16_t)(huart->Instance->DR & (uint16_t)0x01FF);" stores
+   that first frame. Without it, it would be neccesary to send two identical frames in which first one makes
+   the function execution, and the second one is being received by "HAL_UART_Receive_IT" later in the code.
+   But for unknown reasons it still needs "HAL_UART_Receive_IT" later in the code to work as we wanted.
+   So for now we added this hot-fix "HAL_UART_Receive_IT" function which in theoretically does not affect
+   any valuable data.
+   */
+   uint8_t tmp = 0; //HOT-FIX
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
- uint8_t tmp = 0; //HOT-FIX
-
   while (1)
   {
 	  HAL_UART_Receive_IT(&huart2, &tmp, 1); //HOT-FIX
 
-	  if(timer_state == 1)//if TIM10 interrupt, transmitt data via uart:
-	  	 {
-
-		  battery = adc_data[0];//battery voltage level
-		  balance_level = adc_data[1];//light level given by photoresistor divider
-		  charging = adc_data[2];//solar panel voltage level
-
-
-
-
-		  HAL_GPIO_TogglePin(GPIOG, GPIO_PIN_14);//RED led informs that data is transmitted!
-		  size = sprintf(data_to_transmit, "p%db%dl%ds%d\n",charging,battery,balance_level,servo); // Stworzenie wiadomosci do wyslania
-		  HAL_UART_Transmit_IT(&huart2, data_to_transmit, size);//data transmittion
-		  timer_state=0;
-	  	 }
-
-	  if(receive_state == 1)//if UART data availbe - set servo and transmit feedback message
-	  {
-
-		//if data received - turn on LED_Green for half of sec
-		HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_SET);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET);
-		//receiving data:
-		//HAL_UART_Receive_IT(&huart2, received_data, 1);
-
-		servo=atoi(&received_data);//store recieved servo data was received, example: 4
-
-		if(servo>=1 && servo<=8)
-		{
-		mode = 1;
-		Duty = (servo + 3);
-		}
-		else mode=0;// example: when 0 automatic servo positioning
-
-		//feedback message:
-		size = sprintf(data_to_transmit, "p%db%dl%ds%d\n",charging,battery,balance_level,servo); //feedback message  with extra servo data (updated)
-		HAL_UART_Transmit_IT(&huart2, data_to_transmit, size);
-		receive_state=0;
-	  }
-
-	  else if(receive_state == 0 && mode == 0 && timer_state == 1)
-	  {
-		  const uint16_t neutral_pos= 450;
-
-		  if(abs(adc_data[1]-neutral_pos)>50)
-		  {
-		  	  if(adc_data[1]-neutral_pos>0)
-				{
-				  if(Duty<11) Duty+=1;
-				}
-			  else{
-				  if(Duty>4) Duty-=1;
-			  }
-		  }
-
-	  }
-
+	  transmit_data();
+	  process_servo();
+	  watchdog_clear();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
