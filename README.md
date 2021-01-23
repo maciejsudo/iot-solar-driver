@@ -24,4 +24,24 @@ The p, b, l readings are coming from ADC1 are in raw 10bit resolution format (0-
 --> 0 stands for automatic positioning mode,  
 --> {1,2,3,4,5,6,7,8} are 8 positions between 0 and 180 degrees in manual servo position mode: {0; 22.5; 45; 67.5; 90; 112.5; 135; 157.5 [degree]}. 
 
-# To be continued...
+# Images  
+Solar panel with stand and senors:  
+
+![alt text](https://github.com/bielakjacek/iot-solar-driver/blob/main/images/IMG-7537.jpg?raw=true)  
+
+STM32F429ZIT + ESP8266(on NodeMCU v3) + DFR-14423:  
+
+![alt text](https://github.com/bielakjacek/iot-solar-driver/blob/main/images/IMG-7538.jpg?raw=true)  
+
+Raspberry Pi 3B with Node Red + MQTT broker on it(u can also use AWS EC2 instance to eliminate more hardware):  
+
+![alt text](https://github.com/bielakjacek/iot-solar-driver/blob/main/images/IMG-7539.jpg?raw=true) 
+
+Node Red configuration:  
+
+![alt text](https://github.com/bielakjacek/iot-solar-driver/blob/main/images/node1.png?raw=true)  
+
+Node Red - Graphical User Dashboard:  
+
+![alt text](https://github.com/bielakjacek/iot-solar-driver/blob/main/images/dashboard1.png?raw=true)  
+# To be continued...  
