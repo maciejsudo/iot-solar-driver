@@ -14,4 +14,14 @@ In this project STM32F407VG or STM32F429ZIT can be used as microcontroller, seri
   
 <img src="https://github.com/bielakjacek/iot-solar-driver/blob/main/block-diagram/iot-solar-driver-block-diagram.svg">  
 
-# To be continued...
+# Data frame  
+Data frame format(both on USART2 and MQTT packet):  
+p----b----l----s-                              (e.g. p756b950l500s6)  
+Which stands for panel voltage
+(p), battery(b), light level balance(l) and servo position(s).  
+The p, b, l readings are coming from ADC1 are in raw 10bit resolution format (0-1023).  The s number is for servo position and can take a defined values {0,1,2,3,4,5,6,7,8} in which:
+
+--> 0 stands for automatic positioning mode,  
+--> {1,2,3,4,5,6,7,8} are 8 positions between 0 and 180 degrees in manual servo position mode: {0; 22.5; 45; 67.5; 90; 112.5; 135; 157.5 [degree]}. 
+
+# To be continued...  
