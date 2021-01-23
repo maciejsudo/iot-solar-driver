@@ -33,3 +33,8 @@
  
 16.01.2021 Update  
  - Independent Watchdog configuration was added to prevent software freeze  
+ 
+ 20-23.01.2021 Update  
+- Node Red reconfiguration. 
+- Building project.
+- Major bug fixes and polishing on the ESP8266 and both microcontrollers. 
